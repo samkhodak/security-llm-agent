@@ -1,0 +1,6 @@
+langchain
+langchain_openai
+langchain_google_genai
+langchain_experimental
+google-search-results
+langchainhub
