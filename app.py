@@ -8,11 +8,12 @@ from langchain import hub
 from dotenv import load_dotenv
 import asyncio
 import vt
-from pprint import pprint
+from pprint import pprint, pformat
 import traceback
 import os
 
 load_dotenv()
+virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")    
 
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = f"gensec-final"
@@ -30,23 +31,30 @@ gemini_llm = GoogleGenerativeAI(
 )
 gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
-async def get_url_info(url):
-    api_key = os.getenv("VS_TOTAL_API_KEY")    
+def collect_url_info(result):
+            url_categories = result.categories
+            _, sample_category = url_categories.popitem()
+            url_info = {
+                "category": sample_category,
+                "last_analysis_stats": result.last_analysis_stats,
+                "community_votes": result.total_votes
+            }
+            return pformat(url_info, indent=2, sort_dicts=False)
 
-    async with vt.Client(api_key) as client:
-        url_id = vt.url_id(url)
-        url = await client.get_object_async("/urls/{}", url_id)
-        print(type(url))
-        print(url)
-        pprint(vars(url))
+def check_url(url):
+    url_id = vt.url_id(url)
+    with vt.Client(virustotal_api_key) as client:
+        try:
+            search_result = client.get_object("/urls/{}", url_id)
+            return collect_url_info(search_result)
 
-
+        except Exception as error:
+            traceback.print_exc()
+            print("\n\n\nThis url is not in the VirusTotal database yet. Scanning - may take a minute.....\n\n\n")
+            search_result = client.scan_url(url, wait_for_completion=True)
 
 def main():
 
-    # TESTING 
-    asyncio.run(get_url_info("http://www.virustotal.com"))
-    # TESTING
 
     base_prompt = hub.pull("khodak/react-agent-template")
     prompt = base_prompt.partial(instructions=dedent("""You are an agent that is used for helping the user use any tool that's available to you.
