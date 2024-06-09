@@ -6,3 +6,4 @@ google-search-results
 langchainhub
 python-dotenv
 vt-py
+validators

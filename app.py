@@ -12,6 +12,8 @@ from pprint import pprint, pformat
 import traceback
 import os
 
+
+
 load_dotenv()
 virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")    
 
