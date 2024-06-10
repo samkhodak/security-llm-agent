@@ -1,4 +1,4 @@
-from .validating_models import HostNameInput, DocumentFilename
+from .validating_models import UrlInput, DocumentFilename
 from langchain_core.tools import tool
 from pprint import pprint, pformat
 import vt
@@ -20,7 +20,7 @@ def collect_url_info(result):
     }
     return pformat(url_info, indent=2, sort_dicts=False)
 
-@tool("check_url_safety", args_schema=HostNameInput, return_direct=False)
+@tool("check_url_safety", args_schema=UrlInput, return_direct=False)
 def check_url_safety(url):
     """
     Given a hostname URL, will return a concise dictionary of information on the security of the URL.

@@ -3,19 +3,22 @@ import validators
 import traceback
 import re
 
-class HostNameInput(BaseModel):
+class UrlInput(BaseModel):
     """
-    For checking correctness of a DNS hostname. 
+    For checking correctness of a provided URL.
 
-    :param hostname: DNS hostname
-    :type hostname: str
+    :param url: url
+    :type url: str
     """
-    hostname: str = Field(description="Must be a hostname such as www.google.com")
-    @validator('hostname')
-    def is_dns_address(cls, value) -> str:
-        if not validators.domain(value):
-            raise ValueError("Malformed hostname")
-        return value
+    url: str = Field(description="Must be a valid url or domain such as https://www.google.com or www.google.com")
+    @validator('url')
+    def is_url(cls, value) -> str:
+        valid_url = validators.url(value)
+        valid_domain = validators.domain(value)
+        if valid_url == True or valid_domain == True:
+            return value
+        raise ValueError("Malformed URL. Given url is not a proper url or domain.")
+
 
 
 class DocumentFilename(BaseModel):
