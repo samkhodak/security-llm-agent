@@ -1,4 +1,4 @@
-from .validating_models import UrlInput, DocumentFilename
+from .validating_models import UrlInput, FilenameInput
 from langchain_core.tools import tool
 from pprint import pprint, pformat
 import vt
