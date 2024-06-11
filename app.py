@@ -1,14 +1,15 @@
 from langchain_google_genai import GoogleGenerativeAI, HarmCategory, HarmBlockThreshold
 from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain.agents import load_tools
+from langchain_community.agent_toolkits.load_tools import load_tools
 from langsmith import Client
 from textwrap import dedent
 from langchain import hub
-from src.security_toolkit import check_url_safety
+from src.security_toolkit import check_url_safety, get_file_info
 import traceback
 import os
 from pprint import pprint
+
 
 
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -32,12 +33,14 @@ gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
 def main():
 
+    print(get_file_info.invoke("./INFECTED_SNOOPY"))
+
     base_prompt = hub.pull("khodak/react-agent-template")
     prompt = base_prompt.partial(instructions=dedent("""You are an agent that is used for helping the user use any tool that's available to you.
         Be as helpful as possible. If you are unable to produce an answer that is helpful to the user, say so."""))
 
     tools = load_tools(["serpapi"])
-    tools.extend([check_url_safety])
+    tools.extend([check_url_safety, get_file_info])
 
     
     gpt_agent = create_react_agent(gpt_llm, tools, prompt)

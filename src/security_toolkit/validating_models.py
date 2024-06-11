@@ -21,7 +21,6 @@ class UrlInput(BaseModel):
         raise ValueError("Malformed URL. Given url is not a proper url or domain.")
 
 
-
 class FilenameInput(BaseModel):
     """
     This class enforces the use of a filename within the current directory.
@@ -31,17 +30,17 @@ class FilenameInput(BaseModel):
     """
     file_name: str = Field(description="Should be a filename string without a path - Nothing else is accepted. ")
     @validator('file_name')
-    def validate_filename(cls, value):
+    def validate_filename(cls, value) -> str:
+        return value
         file_path = value
-        
         # os.path will return nothing if path ends with '/' on unix systems.
         if (file_path[-1] == '/' or file_path[-1] == '\\'):
-            file_path = file_path[:-1]
+            file_path= file_path[:-1]
         
         final_filename = os.path.basename(file_path)
 
         if not final_filename:
             raise ValueError("Invalid filename. ")
-        
+
         return final_filename
 
