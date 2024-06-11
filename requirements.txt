@@ -7,3 +7,4 @@ langchainhub
 python-dotenv
 vt-py
 validators
+ujson
