@@ -33,8 +33,6 @@ gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
 def main():
 
-    print(get_file_info.invoke("./INFECTED_SNOOPY"))
-
     base_prompt = hub.pull("khodak/react-agent-template")
     prompt = base_prompt.partial(instructions=dedent("""You are an agent that is used for helping the user use any tool that's available to you.
         Be as helpful as possible. If you are unable to produce an answer that is helpful to the user, say so."""))
@@ -56,7 +54,6 @@ def main():
         print(f"\n{tool.name}: \n\n\t{tool.description}")
 
 
-    
 
     while True:
         try:
@@ -67,9 +64,9 @@ def main():
                 print(f"\n\n{result.get('output')}")
             else:
                 break
-
-        except ValueError as ve:
-            error = ve.errors()[0]
+            
+        except (ValueError, RuntimeError) as exception:
+            error = exception.errors()[0]
             print(f"\n\n{error.get('msg')}")
         except Exception:
             traceback.print_exc()

@@ -14,15 +14,67 @@ from time import sleep
 load_dotenv()
 virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")    
 
+
+# ==== Utilities ====
+
 def collect_url_info(result):
-    url_categories = result.categories
-    _, sample_category = url_categories.popitem()
     url_info = {
-        "category": sample_category,
+        "category": result.url_categories,
         "last_analysis_stats": result.last_analysis_stats,
         "community_votes": result.total_votes
     }
     return pformat(url_info, indent=2, sort_dicts=False)
+
+
+def collect_file_info(result):
+    file_info = {
+        "names": result.names[:4],
+        "last_stats": result.last_analysis_stats,
+        "threat_class": result.popular_threat_classification,
+    }
+    return pformat(file_info, indent=2, sort_dicts=False)
+
+
+def upload_file(filename):
+    scan_url = "https://www.virustotal.com/api/v3/files"
+
+    headers = {
+        "accept": "application/json",
+        "x-apikey": virustotal_api_key
+    }
+
+    with open(f"./{filename}", "rb") as file:
+        files = { "file": (filename, file, "text/x-python") }
+        scan_response = requests.post(scan_url, files=files, headers=headers)
+
+    analysis_id = scan_response.json().get("data").get("id")
+    print(analysis_id)
+    
+    analysis_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
+    analysis_response = requests.get(analysis_url, headers=headers)
+    analysis = ujson.loads(analysis_response.text)
+    status = analysis.get("data").get("attributes").get("status")
+
+    timeout = 300
+    interval = 5
+    seconds = 0
+    while((status != "completed") and (seconds < timeout)):
+        print("Waiting for file scan to complete... Please standby.")
+        sleep(interval)
+        seconds += interval
+        analysis_response = requests.get(analysis_url, headers=headers)
+        analysis = ujson.loads(analysis_response.text)
+        status = analysis.get("data", {}).get("attributes", {}).get("status")
+
+    if (status != "completed"):
+        raise RuntimeError("The scan timed out. Due to unknown API delay, the file could not be scanned completely.")
+
+    file_info = analysis.get("meta", {}).get("file_info", {})
+    return file_info.get("sha_256")
+
+
+
+# ==== Tools ====
 
 @tool("check_url_safety", args_schema=UrlInput, return_direct=False)
 def check_url_safety(url):
@@ -44,59 +96,14 @@ def check_url_safety(url):
         return collect_url_info(url_analysis)
 
 
-def upload_file(filename):
-
-    scan_url = "https://www.virustotal.com/api/v3/files"
-
-    headers = {
-        "accept": "application/json",
-        "x-apikey": virustotal_api_key
-    }
-
-    with open(f"./{filename}", "rb") as file:
-
-        files = { "file": (filename, file, "text/x-python") }
-        scan_response = requests.post(scan_url, files=files, headers=headers)
-
-    analysis_id = scan_response.json().get("data").get("id")
-    print(analysis_id)
-    
-    analysis_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-    analysis_response = requests.get(analysis_url, headers=headers)
-    analysis = ujson.loads(analysis_response.text)
-    status = analysis.get("data").get("attributes").get("status")
-
-    timeout = 150
-    interval = 5
-    seconds = 0
-    while((status != "completed") and (seconds < timeout)):
-        print("Waiting for file scan to complete... Please standby.")
-        sleep(interval)
-        seconds += interval
-        analysis_response = requests.get(analysis_url, headers=headers)
-        analysis = ujson.loads(analysis_response.text)
-        status = analysis.get("data", {}).get("attributes", {}).get("status")
-
-    if (seconds >= timeout):
-        print("Sorry, the scan timed out.")
-
-    file_info = analysis.get("meta", {}).get("file_info", {})
-    return file_info.get("sha_256")
-
-
-        
-
-    
-    
-
-
-
 @tool("get_file_info", args_schema=FilenameInput, return_direct=False)
 def get_file_info(filename):
     """
-    Given a filename, will get security information on whether the file is safe or not.
+    Given a filename, will get security information on whether the file is safe or not. The information will have potential
+    malware names/hashes, stats on whether the file was rated as malicious, and the threat classification of the file once it is scanned.
     """
 
+    # TODO move this to pydantic v2 and test it here?
     # os.path will return nothing if path ends with '/' on unix systems.
     if (filename[-1] == '/' or filename[-1] == '\\'):
         filename = filename[:-1]
@@ -132,8 +139,9 @@ def get_file_info(filename):
                     file_analysis = client.get_object("/files/{}", file_hash)
                 else:
                     raise
+        
+        return collect_file_info(file_analysis)
 
-            pprint(vars(file_analysis))
-            pprint(type(file_analysis))
+
             
     
