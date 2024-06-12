@@ -32,7 +32,6 @@ gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
 
 
 def main():
-
     base_prompt = hub.pull("khodak/react-agent-template")
     prompt = base_prompt.partial(instructions=dedent("""You are an agent that is used for helping the user use any tool that's available to you.
         Be as helpful as possible. If you are unable to produce an answer that is helpful to the user, say so."""))
@@ -66,8 +65,7 @@ def main():
                 break
             
         except (ValueError, RuntimeError) as exception:
-            error = exception.errors()[0]
-            print(f"\n\n{error.get('msg')}")
+            print(f"\n\n{str(exception)}")
         except Exception:
             traceback.print_exc()
 
