@@ -81,12 +81,13 @@ def upload_file(filename):
     status, analysis = get_file_analysis(analysis_id, headers)
 
     timeout = 500  # Seconds
-    interval = 5
+    request_interval = 5
     seconds = 0
     while((status != "completed") and (seconds < timeout)):
-        print(f"Waiting for file scan to complete... Please standby. ({seconds} seconds)")
-        sleep(interval)
-        seconds += interval
+        if (seconds % (request_interval*2) == 0): # Display every (interval*2) seconds.
+            print(f"Waiting for file scan to complete... Please standby. ({seconds} seconds)")
+        sleep(request_interval)
+        seconds += request_interval
         status, analysis = get_file_analysis(analysis_id, headers)
 
     if (status != "completed"):
