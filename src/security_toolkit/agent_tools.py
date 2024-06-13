@@ -17,7 +17,7 @@ virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")
 
 # ==== Utilities ====
 
-def collect_url_info(url_report):
+def collect_url_info(url_report: dict) -> dict:
     """ Collect file info from url report into a concise dictionary. 
 
     :param file_report: Dictionary of url info
@@ -33,7 +33,7 @@ def collect_url_info(url_report):
     return pformat(url_info, indent=2, sort_dicts=False)
 
 
-def collect_file_info(file_report):
+def collect_file_info(file_report: dict) -> dict:
     """ Collect file info from file report into a concise dictionary. 
 
     :param file_report: Dictionary of file info 
