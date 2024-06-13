@@ -6,7 +6,7 @@ class UrlInput(BaseModel):
     """
     For checking correctness of a provided URL.
 
-    :param url: url
+    :param url: Url address.
     :type url: str
     """
     url: str = Field(description="Must be a valid url or domain such as https://www.google.com or www.google.com")

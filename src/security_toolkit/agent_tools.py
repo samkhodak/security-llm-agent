@@ -17,17 +17,31 @@ virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")
 
 # ==== Utilities ====
 
-def collect_url_info(result):
+def collect_url_info(url_report):
+    """ Collect file info from url report into a concise dictionary. 
+
+    :param file_report: Dictionary of url info
+    :type file_report: dict
+    :return: Dictionary of security statistics for url. 
+    :rtype: dict
+    """
     url_info = {
-        "category": result.get("categories", "None for this URL."),
-        "last_analysis_stats": result.get("last_analysis_stats", "None for this URL."),
-        "community_votes": result.get("total_votes", "None for this URL."),
+        "category": url_report.get("categories", "None for this URL."),
+        "last_analysis_stats": url_report.get("last_analysis_stats", "None for this URL."),
+        "community_votes": url_report.get("total_votes", "None for this URL."),
     }
     return pformat(url_info, indent=2, sort_dicts=False)
 
 
-def collect_file_info(result):
-    attributes = result.get("data", {}).get("attributes", {})
+def collect_file_info(file_report):
+    """ Collect file info from file report into a concise dictionary. 
+
+    :param file_report: Dictionary of file info 
+    :type file_report: dict
+    :return: Dictionary of security-related info for file.
+    :rtype: dict
+    """
+    attributes = file_report.get("data", {}).get("attributes", {})
     file_info = {
         "hash": attributes.get("sha256", None),
         "names": attributes.get("names", [])[:4],
@@ -37,7 +51,16 @@ def collect_file_info(result):
     return pformat(file_info, indent=2, sort_dicts=False)
 
 
-def get_file_analysis(analysis_id, headers):
+def get_file_analysis(analysis_id: str, headers: dict) -> tuple[str,dict]:
+    """ Query virustotal analysis endpoint to check if analysis is done, and return analysis.
+
+    :param analysis_id: ID of analysis in progress.
+    :type analysis_id: str
+    :param headers: Dictionary of header values for API
+    :type headers: dict
+    :return: status code and dictionary of analysis info.
+    :rtype: tuple(str, dict)
+    """
     analysis_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
     analysis_response = requests.get(analysis_url, headers=headers)
     analysis = ujson.loads(analysis_response.text)
@@ -46,7 +69,15 @@ def get_file_analysis(analysis_id, headers):
     return status, analysis
 
 
-def retrieve_file_report(sha256):
+def retrieve_file_report(sha256: str) -> dict:
+    """ Retrieve file report for a specific file hash.
+
+    :param sha256: sha-256 hash for file.
+    :type sha256: str
+    :raises RuntimeError: If file is not yet in database, throw error in order to catch and scan the file.
+    :return: Dictionary of file report details from response.
+    :rtype: dict 
+    """
     url = f"https://www.virustotal.com/api/v3/files/{sha256}"
     headers = {
         "accept": "application/json",
@@ -62,7 +93,16 @@ def retrieve_file_report(sha256):
     
 
 
-def upload_file(filename):
+def upload_file(filename: str) -> str:
+    """ Uploads a file to virustotal api and displays while looping until analysis is complete.
+
+    :param filename: Name of file from current directory to scan.
+    :type filename: str
+    :raises ValueError: If file doesn't exist in curent directory, error thrown.
+    :raises RuntimeError: If API scan exceeds preset timeout, error thrown.
+    :return: sha-256 hash of uploaded file.
+    :rtype: str
+    """
     scan_url = "https://www.virustotal.com/api/v3/files"
     headers = {
         "accept": "application/json",
@@ -95,7 +135,6 @@ def upload_file(filename):
 
     file_info = analysis.get("meta", {}).get("file_info", {})
     return file_info.get("sha256")
-
 
 
 # ==== Tools ====
