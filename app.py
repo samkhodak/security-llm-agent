@@ -5,7 +5,7 @@ from langchain_community.agent_toolkits.load_tools import load_tools
 from langsmith import Client
 from textwrap import dedent
 from langchain import hub
-from src.security_toolkit import check_url_safety, get_file_info
+from src.security_toolkit import check_url_safety, get_file_info, search_malware_info
 import traceback
 import os
 from pprint import pprint
@@ -45,7 +45,8 @@ def main():
             agent=gpt_agent, 
             tools=tools, 
             max_iterations=5, 
-            verbose=True
+            verbose=True,
+            handle_parsing_errors=True,
     )
 
     print("\n\nThe agent has access to the following tools: \n")

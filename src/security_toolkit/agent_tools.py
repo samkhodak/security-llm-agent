@@ -1,19 +1,25 @@
 from .validating_models import UrlInput, FilenameInput, ValidationError
 from langchain_core.tools import tool
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain_community.agent_toolkits.load_tools import load_tools
+from langchain import hub
 from pprint import pprint, pformat
-import vt
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from time import sleep
 from dotenv import load_dotenv
+import vt
 import os
 import hashlib
 import requests
 import ujson
-import traceback
-from time import sleep
 
 
 load_dotenv()
 virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")    
 
+gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
+claude_llm = ChatAnthropic(model="claude-3-sonnet-20240229")
 
 # ==== Utilities ====
 
@@ -30,11 +36,11 @@ def collect_url_info(url_report: dict) -> dict:
         "last_analysis_stats": url_report.get("last_analysis_stats", "None for this URL."),
         "community_votes": url_report.get("total_votes", "None for this URL."),
     }
-    return pformat(url_info, indent=2, sort_dicts=False)
+    return url_info
 
 
 def collect_file_info(file_report: dict) -> dict:
-    """ Collect file info from file report into a concise dictionary. 
+    """ Parse file info from file report into a concise dictionary. 
 
     :param file_report: Dictionary of file info 
     :type file_report: dict
@@ -42,13 +48,36 @@ def collect_file_info(file_report: dict) -> dict:
     :rtype: dict
     """
     attributes = file_report.get("data", {}).get("attributes", {})
+
+    file_hash = attributes.get("sha256", None)
+    last_stats = attributes.get("last_analysis_stats", "None for this file.")
+    popular_threat_stats = attributes.get("popular_threat_classification", {})
+
+    popular_threat_names = popular_threat_stats.get("popular_threat_name", "None for this file.")
+    popular_threat_categories = popular_threat_stats.get("popular_threat_category", "None for this file.")
+
+    # Potential threat is the most likely name and threat type for the file.
+    try:
+        threat_name = popular_threat_names[0].get("value", None)
+        threat_category = popular_threat_categories[0].get("value", None)
+        potential_threat = [f"{threat_name} - {threat_category}"]
+    except KeyError: 
+        potential_threat = None
+        pass
+    
     file_info = {
-        "hash": attributes.get("sha256", None),
-        "names": attributes.get("names", [])[:4],
-        "last_stats": attributes.get("last_analysis_stats", "None for this file."),
-        "threat_class": attributes.get("popular_threat_classification", "None for this file."),
+        "hash": file_hash,
+        "last_stats": last_stats, 
+        "popular_threat_categories": popular_threat_categories,
+        "popular_threat_names": popular_threat_names,
     }
-    return pformat(file_info, indent=2, sort_dicts=False)
+
+    # If the file is likely malware and has a potential threat, research and add an explanation of malware to the dict.
+    if (potential_threat):
+        malware_explanation = search_malware_info(potential_threat)
+        file_info.update({"potential_explanation_of_malware": malware_explanation})
+
+    return file_info
 
 
 def get_file_analysis(analysis_id: str, headers: dict) -> tuple[str,dict]:
@@ -109,6 +138,7 @@ def upload_file(filename: str) -> str:
         "x-apikey": virustotal_api_key
     }
 
+    # Scan file
     try:
         with open(f"./{filename}", "rb") as file:
             files = { "file": (filename, file, "text/x-python") }
@@ -120,11 +150,12 @@ def upload_file(filename: str) -> str:
     analysis_id = scan_response.json().get("data", {}).get("id")
     status, analysis = get_file_analysis(analysis_id, headers)
 
-    timeout = 500  # Seconds
+    timeout = 500 
     request_interval = 5
     seconds = 0
+    # Loop until file scan is completed, or until timeout seconds.
     while((status != "completed") and (seconds < timeout)):
-        if (seconds % (request_interval*2) == 0): # Display every (interval*2) seconds.
+        if (seconds % (request_interval*2) == 0):           # Display every (interval*2) seconds.
             print(f"Waiting for file scan to complete... Please standby. ({seconds} seconds)")
         sleep(request_interval)
         seconds += request_interval
@@ -136,6 +167,23 @@ def upload_file(filename: str) -> str:
     file_info = analysis.get("meta", {}).get("file_info", {})
     return file_info.get("sha256")
 
+
+def search_malware_info(names: list[str]) -> str:
+    base_prompt = hub.pull("khodak/react-agent-template")
+    prompt = base_prompt.partial(instructions="""
+        You are an intelligent researching agent that helps uncover potentially unsafe files in a user's system. 
+        From the input, you will be given a list of names or file hashes from a file that could potentially be associated with malware. 
+        Your job is to look up the names and see if they correspond to any known malware. 
+
+        If one of the names potentially corresponds to malware, formulate an explanation of the potential malware and explain
+        what it does. Only respond with an explanation of ONE of the names. Limit the response to four sentences or less and keep your tone official and informative.
+    """)
+
+    tools = load_tools(["serpapi"])
+    claude_agent = create_react_agent(claude_llm, tools, prompt)
+    agent_exec = AgentExecutor(agent=claude_agent, tools=tools, verbose=True, handle_parsing_errors=True)
+    result = agent_exec.invoke({"input": names})
+    return result.get("output", None)
 
 # ==== Tools ====
 
@@ -205,7 +253,10 @@ def get_file_info(filename):
             file_report = retrieve_file_report(file_sha256) 
 
     file.close()
-    return collect_file_info(file_report)
+
+    collected_info = collect_file_info(file_report)
+
+    return pformat(collected_info, indent=4, sort_dicts=False)
 
 
             
