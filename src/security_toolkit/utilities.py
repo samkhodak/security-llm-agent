@@ -111,7 +111,7 @@ def retrieve_file_report(sha256: str) -> dict:
     url = f"https://www.virustotal.com/api/v3/files/{sha256}"
     headers = {
         "accept": "application/json",
-        "x-apikey": virustotal_api_key 
+        "x-apikey": virustotal_api_key,
     }
 
     response = requests.get(url, headers=headers)

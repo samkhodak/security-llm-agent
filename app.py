@@ -5,10 +5,12 @@ from langsmith import Client
 from textwrap import dedent
 from langchain import hub
 from src.security_toolkit import check_url_safety, analyze_file
+from dotenv import load_dotenv
 import traceback
 import os
 
 
+load_dotenv()
 
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = f"gensec-final"

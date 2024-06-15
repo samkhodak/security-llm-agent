@@ -4,14 +4,12 @@ from langchain_core.tools import tool
 from pprint import pformat
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from dotenv import load_dotenv
 import vt
 import os
 import hashlib
 
 
 
-load_dotenv()
 virustotal_api_key = os.getenv("VS_TOTAL_API_KEY")    
 
 gpt_llm = ChatOpenAI(model='gpt-4o', temperature=0)
@@ -78,14 +76,13 @@ def analyze_file(filename):
     file_hash = sha256_hasher.hexdigest()
 
     # Request file info if it exists, and upload the file if not.
-    with vt.Client(apikey=virustotal_api_key, timeout=1000) as client:
-        try: 
-            file_report = retrieve_file_report(file_hash)
+    try: 
+        file_report = retrieve_file_report(file_hash)
 
-        except RuntimeError as exception:
-            print(f"\n\n{str(exception)} Scanning file - may take a minute...\n")
-            file_sha256 = scan_file(validated_filename)
-            file_report = retrieve_file_report(file_sha256) 
+    except RuntimeError as exception:
+        print(f"\n\n{str(exception)} Scanning file - may take a minute...\n")
+        file_sha256 = scan_file(validated_filename)
+        file_report = retrieve_file_report(file_sha256) 
 
     file.close()
 
