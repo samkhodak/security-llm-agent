@@ -13,7 +13,7 @@ import os
 load_dotenv()
 
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
-os.environ["LANGCHAIN_PROJECT"] = f"gensec-final"
+os.environ["LANGCHAIN_PROJECT"] = f"security-llm-agent"
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 client = Client()
 
